@@ -48,7 +48,7 @@ if exist "%BASE_DIR%config_tunel.txt" (
     )
 )
 
-if defined NGROK_TOKEN if defined NGROK_DOMAIN (
+if defined NGROK_TOKEN (
     set "USE_FIXED_NGROK=1"
 )
 
@@ -57,27 +57,26 @@ set "TUNNEL_URL="
 if "%USE_FIXED_NGROK%"=="1" (
     echo Detectada configuracion de DOMINIO FIJO PERMANENTE (Ngrok)...
     
-    :: Asegurar ejecutable de ngrok
-    if not exist "%BASE_DIR%ngrok.exe" (
-        if exist "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\ngrok.exe" (
-            copy /y "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\ngrok.exe" "%BASE_DIR%ngrok.exe" >nul 2>&1
-        )
+    :: Buscar ejecutable de ngrok
+    set "NGROK_BIN="
+    if exist "%BASE_DIR%ngrok.exe" (
+        set "NGROK_BIN=%BASE_DIR%ngrok.exe"
+    ) else if exist "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\ngrok.exe" (
+        set "NGROK_BIN=C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\ngrok.exe"
     )
 
-    :: Crear archivo de configuración ngrok.yml local
-    (
-        echo authtoken: %NGROK_TOKEN%
-        echo version: 2
-    ) > "%BASE_DIR%ngrok.yml"
-
-    :: Limpiar prefijo https:// si el usuario lo escribió en el dominio
+    :: Limpiar prefijo https:// si fue incluido
     set "CLEAN_DOMAIN=%NGROK_DOMAIN:https://=%"
     set "CLEAN_DOMAIN=%CLEAN_DOMAIN:http://=%"
     set "CLEAN_DOMAIN=%CLEAN_DOMAIN:/=%"
 
-    start "Escape Room - Tunel Fijo Permanente" cmd /k "title Tunel Fijo Permanente && echo Conectando tu dominio fijo: https://%CLEAN_DOMAIN% && "%BASE_DIR%ngrok.exe" http 4200 --url=%CLEAN_DOMAIN% --config="%BASE_DIR%ngrok.yml""
-    set "TUNNEL_URL=https://!CLEAN_DOMAIN!"
-    if not defined TUNNEL_URL set "TUNNEL_URL=https://%CLEAN_DOMAIN%"
+    if defined CLEAN_DOMAIN (
+        set "TUNNEL_URL=https://%CLEAN_DOMAIN%"
+        start "Escape Room - Tunel Fijo Permanente" cmd /k "title Tunel Fijo Permanente && echo Conectando dominio fijo: https://%CLEAN_DOMAIN% && "%NGROK_BIN%" http 4200 --url=https://%CLEAN_DOMAIN% --authtoken=%NGROK_TOKEN%"
+    ) else (
+        start "Escape Room - Tunel Fijo Permanente" cmd /k "title Tunel Fijo Permanente && echo Conectando dominio fijo Ngrok... && "%NGROK_BIN%" http 4200 --authtoken=%NGROK_TOKEN%"
+        set "TUNNEL_URL=https://cyclic-consuming-survivor.ngrok-free.dev"
+    )
 ) else (
     echo Iniciando tunel automatico Cloudflare a http://localhost:4200...
     set "CLOUDFLARED_CMD="
@@ -85,8 +84,6 @@ if "%USE_FIXED_NGROK%"=="1" (
         set "CLOUDFLARED_CMD=%BASE_DIR%cloudflared.exe"
     ) else if exist "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe" (
         set "CLOUDFLARED_CMD=C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe"
-        copy /y "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe" "%BASE_DIR%cloudflared.exe" >nul 2>&1
-        if exist "%BASE_DIR%cloudflared.exe" set "CLOUDFLARED_CMD=%BASE_DIR%cloudflared.exe"
     )
 
     if defined CLOUDFLARED_CMD (
