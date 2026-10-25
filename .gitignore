@@ -47,4 +47,9 @@ Thumbs.db
 *.ppt
 *NORMAS_APA*
 
-
+# Tunel y archivos de conexion remota
+cloudflared.exe
+tools/
+*.exe
+tunnel.log
+ENLACE_CELULARES.txt

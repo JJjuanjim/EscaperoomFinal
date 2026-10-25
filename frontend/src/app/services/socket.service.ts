@@ -12,6 +12,21 @@ export class SocketService {
   private getServerUrl(): string {
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname || 'localhost';
+      const port = window.location.port;
+
+      // Si se accede mediante tunel HTTPS (Cloudflare, ngrok, pinggy, etc.),
+      // o por el proxy unificado en el puerto 4200
+      if (
+        window.location.protocol === 'https:' ||
+        hostname.includes('trycloudflare.com') ||
+        hostname.includes('ngrok') ||
+        hostname.includes('localtunnel') ||
+        hostname.includes('pinggy') ||
+        port === '4200' ||
+        port === ''
+      ) {
+        return window.location.origin;
+      }
       return `http://${hostname}:3002`;
     }
     return 'http://localhost:3002';
