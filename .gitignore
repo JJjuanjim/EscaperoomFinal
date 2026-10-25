@@ -16,7 +16,10 @@ frontend/.angular/
 # Variables de entorno y secretos
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example
 *.local
 
 # Logs
@@ -44,4 +47,12 @@ Thumbs.db
 *.ppt
 *NORMAS_APA*
 
-
+# Tunel y archivos de conexion remota
+cloudflared.exe
+ngrok.exe
+ngrok.yml
+config_tunel.txt
+tools/
+*.exe
+tunnel.log
+ENLACE_CELULARES.txt
