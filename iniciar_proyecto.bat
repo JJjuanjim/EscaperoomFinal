@@ -8,7 +8,7 @@ echo.
 
 set BASE_DIR=%~dp0
 
-:: 0. Limpiar logs y enlaces previos de túnel
+:: 0. Limpiar logs y archivos de sesión previa
 if exist "%BASE_DIR%tunnel.log" del /f /q "%BASE_DIR%tunnel.log" >nul 2>&1
 if exist "%BASE_DIR%ENLACE_CELULARES.txt" del /f /q "%BASE_DIR%ENLACE_CELULARES.txt" >nul 2>&1
 
@@ -35,42 +35,83 @@ if not exist "%BASE_DIR%frontend\node_modules" (
 :: 4. Iniciar Frontend con proxy unificado (WebSockets y API pasan por puerto 4200)
 start "Escape Room - Frontend (Angular Puerto 4200)" cmd /k "cd /d "%BASE_DIR%frontend" && echo Compilando Angular con proxy unificado para WebSockets y Celulares... && npm start"
 
-:: 5. Preparar ejecutable de Cloudflare Tunnel
-echo [4/4] Preparando tunel publico seguro para celulares (4G/5G y otras redes)...
-set "CLOUDFLARED_CMD="
-if exist "%BASE_DIR%cloudflared.exe" (
-    set "CLOUDFLARED_CMD=%BASE_DIR%cloudflared.exe"
-) else if exist "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe" (
-    set "CLOUDFLARED_CMD=C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe"
-    copy /y "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe" "%BASE_DIR%cloudflared.exe" >nul 2>&1
-    if exist "%BASE_DIR%cloudflared.exe" set "CLOUDFLARED_CMD=%BASE_DIR%cloudflared.exe"
+:: 5. Comprobar si hay configuración de ENLACE FIJO (Ngrok) en config_tunel.txt
+echo [4/4] Preparando tunel para celulares (4G/5G y redes externas)...
+set "USE_FIXED_NGROK=0"
+set "NGROK_TOKEN="
+set "NGROK_DOMAIN="
+
+if exist "%BASE_DIR%config_tunel.txt" (
+    for /f "usebackq tokens=1,2 delims==" %%a in ("%BASE_DIR%config_tunel.txt") do (
+        if "%%a"=="NGROK_AUTHTOKEN" if not "%%b"=="" set "NGROK_TOKEN=%%b"
+        if "%%a"=="NGROK_DOMINIO_FIJO" if not "%%b"=="" set "NGROK_DOMAIN=%%b"
+    )
 )
 
-if defined CLOUDFLARED_CMD (
-    echo Iniciando tunel seguro Cloudflare a http://localhost:4200...
-    start "Escape Room - Tunel Publico para Celulares" cmd /k "title Tunel Publico para Celulares && echo Conectando tunel publico Cloudflare... && "%CLOUDFLARED_CMD%" tunnel --url http://localhost:4200 --logfile "%BASE_DIR%tunnel.log""
-) else (
-    echo Iniciando tunel alternativo via SSH...
-    start "Escape Room - Tunel Publico para Celulares" cmd /k "title Tunel Publico para Celulares && echo Conectando tunel via SSH con codigo QR... && ssh -p 443 -R0:localhost:4200 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 qr@a.pinggy.io"
+if defined NGROK_TOKEN if defined NGROK_DOMAIN (
+    set "USE_FIXED_NGROK=1"
 )
 
-echo.
-echo ==============================================================================
-echo    ESPERANDO A QUE LOS SERVICIOS Y EL TUNEL SE INICIALICEN...
-echo ==============================================================================
-echo (Esto toma unos 20-25 segundos, por favor espera mientras se compilan los modulos)
-echo.
-
-:: Esperar a que el túnel genere la URL pública en tunnel.log
 set "TUNNEL_URL="
-for /l %%i in (1,1,28) do (
-    if not defined TUNNEL_URL (
-        timeout /t 1 /nobreak >nul
-        if exist "%BASE_DIR%tunnel.log" (
-            for /f "tokens=*" %%u in ('powershell -Command "try { $m = (Select-String -Path '%BASE_DIR%tunnel.log' -Pattern 'https://[a-zA-Z0-9-]+\.trycloudflare\.com').Matches; if ($m) { $m[-1].Value } } catch {}"') do set "TUNNEL_URL=%%u"
+
+if "%USE_FIXED_NGROK%"=="1" (
+    echo Detectada configuracion de DOMINIO FIJO PERMANENTE (Ngrok)...
+    
+    :: Asegurar ejecutable de ngrok
+    if not exist "%BASE_DIR%ngrok.exe" (
+        if exist "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\ngrok.exe" (
+            copy /y "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\ngrok.exe" "%BASE_DIR%ngrok.exe" >nul 2>&1
+        )
+    )
+
+    :: Crear archivo de configuración ngrok.yml local
+    (
+        echo authtoken: %NGROK_TOKEN%
+        echo version: 2
+    ) > "%BASE_DIR%ngrok.yml"
+
+    :: Limpiar prefijo https:// si el usuario lo escribió en el dominio
+    set "CLEAN_DOMAIN=%NGROK_DOMAIN:https://=%"
+    set "CLEAN_DOMAIN=%CLEAN_DOMAIN:http://=%"
+    set "CLEAN_DOMAIN=%CLEAN_DOMAIN:/=%"
+
+    start "Escape Room - Tunel Fijo Permanente" cmd /k "title Tunel Fijo Permanente && echo Conectando tu dominio fijo: https://%CLEAN_DOMAIN% && "%BASE_DIR%ngrok.exe" http 4200 --url=%CLEAN_DOMAIN% --config="%BASE_DIR%ngrok.yml""
+    set "TUNNEL_URL=https://!CLEAN_DOMAIN!"
+    if not defined TUNNEL_URL set "TUNNEL_URL=https://%CLEAN_DOMAIN%"
+) else (
+    echo Iniciando tunel automatico Cloudflare a http://localhost:4200...
+    set "CLOUDFLARED_CMD="
+    if exist "%BASE_DIR%cloudflared.exe" (
+        set "CLOUDFLARED_CMD=%BASE_DIR%cloudflared.exe"
+    ) else if exist "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe" (
+        set "CLOUDFLARED_CMD=C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe"
+        copy /y "C:\Users\mynor\Documents\umg 2026\decimo\aseguramiento\agente_claude\cloudflared.exe" "%BASE_DIR%cloudflared.exe" >nul 2>&1
+        if exist "%BASE_DIR%cloudflared.exe" set "CLOUDFLARED_CMD=%BASE_DIR%cloudflared.exe"
+    )
+
+    if defined CLOUDFLARED_CMD (
+        start "Escape Room - Tunel para Celulares" cmd /k "title Tunel para Celulares && echo Conectando tunel publico Cloudflare... && "%CLOUDFLARED_CMD%" tunnel --url http://localhost:4200 --logfile "%BASE_DIR%tunnel.log""
+    ) else (
+        start "Escape Room - Tunel para Celulares" cmd /k "title Tunel para Celulares && echo Conectando tunel via SSH... && ssh -p 443 -R0:localhost:4200 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 qr@a.pinggy.io"
+    )
+
+    echo Esperando a que el tunel genere el enlace...
+    for /l %%i in (1,1,28) do (
+        if not defined TUNNEL_URL (
+            timeout /t 1 /nobreak >nul
+            if exist "%BASE_DIR%tunnel.log" (
+                for /f "tokens=*" %%u in ('powershell -Command "try { $m = (Select-String -Path '%BASE_DIR%tunnel.log' -Pattern 'https://[a-zA-Z0-9-]+\.trycloudflare\.com').Matches; if ($m) { $m[-1].Value } } catch {}"') do set "TUNNEL_URL=%%u"
+            )
         )
     )
 )
+
+echo.
+echo ==============================================================================
+echo    ESPERANDO A QUE LOS SERVICIOS SE INICIALICEN...
+echo ==============================================================================
+echo (Esto toma unos 15-20 segundos, por favor espera mientras se compilan los modulos)
+timeout /t 10 /nobreak >nul
 
 :: Obtener IP local del equipo en la red Wi-Fi
 set "LOCAL_IP=127.0.0.1"
@@ -90,15 +131,19 @@ echo     URL: http://%LOCAL_IP%:4200
 echo.
 if defined TUNNEL_URL (
     echo ==============================================================================
-    echo [3] PARA CELULARES (DATOS MOVILES 4G/5G O CUALQUIER OTRA RED EXTERNA):
+    if "%USE_FIXED_NGROK%"=="1" (
+        echo [3] ENLACE FIJO PERMANENTE PARA CELULARES (DATOS 4G/5G O CUALQUIER RED):
+    ) else (
+        echo [3] ENLACE PARA CELULARES (DATOS 4G/5G O CUALQUIER OTRA RED EXTERNA):
+    )
     echo     URL: %TUNNEL_URL%
     echo ==============================================================================
-    echo (Copiando enlace al portapapeles... ya puedes pegarlo directamente en WhatsApp)
+    echo (Copiando enlace al portapapeles... ya puedes pegarlo directamente en WhatsApp con Ctrl+V)
     echo %TUNNEL_URL%| clip
     echo %TUNNEL_URL% > "%BASE_DIR%ENLACE_CELULARES.txt"
 ) else (
-    echo [3] PARA CELULARES (DATOS MOVILES 4G/5G O CUALQUIER OTRA RED EXTERNA):
-    echo     Revisa la ventana 'Escape Room - Tunel Publico para Celulares' para ver el enlace generado.
+    echo [3] PARA CELULARES (DATOS MOVILES 4G/5G):
+    echo     Revisa la ventana 'Escape Room - Tunel para Celulares' para ver el enlace generado.
 )
 echo.
 echo [4] DOCUMENTACION SWAGGER API REST:

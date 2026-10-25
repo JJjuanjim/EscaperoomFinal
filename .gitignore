@@ -49,6 +49,9 @@ Thumbs.db
 
 # Tunel y archivos de conexion remota
 cloudflared.exe
+ngrok.exe
+ngrok.yml
+config_tunel.txt
 tools/
 *.exe
 tunnel.log

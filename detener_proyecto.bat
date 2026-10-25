@@ -22,17 +22,19 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :4200 ^| findstr LISTENING') 
     taskkill /f /pid %%a >nul 2>&1
 )
 
-:: 3. Detener Cloudflare Tunnel si está activo
-echo [3/3] Cerrando tunel para celulares...
+:: 3. Detener túneles si están activos
+echo [3/3] Cerrando tuneles para celulares (Cloudflare y Ngrok)...
 taskkill /f /im cloudflared.exe >nul 2>&1
+taskkill /f /im ngrok.exe >nul 2>&1
 
 :: Limpiar archivos temporales de sesión de túnel
 if exist "%BASE_DIR%tunnel.log" del /f /q "%BASE_DIR%tunnel.log" >nul 2>&1
+if exist "%BASE_DIR%ngrok.yml" del /f /q "%BASE_DIR%ngrok.yml" >nul 2>&1
 
 echo.
 echo ==============================================================================
 echo    SERVICIOS DETENIDOS CON ÉXITO
 echo ==============================================================================
-echo Los puertos 3002, 4200 y el tunel han quedado completamente cerrados.
+echo Los puertos 3002, 4200 y los tuneles han quedado completamente cerrados.
 echo.
 timeout /t 3
