@@ -72,9 +72,9 @@ if "%USE_FIXED_NGROK%"=="1" (
 
     if defined CLEAN_DOMAIN (
         set "TUNNEL_URL=https://%CLEAN_DOMAIN%"
-        start "Escape Room - Tunel Fijo Permanente" cmd /k "title Tunel Fijo Permanente && echo Conectando dominio fijo: https://%CLEAN_DOMAIN% && "%NGROK_BIN%" http 4200 --url=https://%CLEAN_DOMAIN% --authtoken=%NGROK_TOKEN%"
+        start "Escape Room - Tunel Fijo Permanente" cmd /k "cd /d "%BASE_DIR%" && title Tunel Fijo Permanente && echo Conectando dominio fijo: https://%CLEAN_DOMAIN% && ngrok.exe http 127.0.0.1:4200 --url=https://%CLEAN_DOMAIN% --authtoken=%NGROK_TOKEN%"
     ) else (
-        start "Escape Room - Tunel Fijo Permanente" cmd /k "title Tunel Fijo Permanente && echo Conectando dominio fijo Ngrok... && "%NGROK_BIN%" http 4200 --authtoken=%NGROK_TOKEN%"
+        start "Escape Room - Tunel Fijo Permanente" cmd /k "cd /d "%BASE_DIR%" && title Tunel Fijo Permanente && echo Conectando dominio fijo Ngrok... && ngrok.exe http 127.0.0.1:4200 --url=https://cyclic-consuming-survivor.ngrok-free.dev --authtoken=%NGROK_TOKEN%"
         set "TUNNEL_URL=https://cyclic-consuming-survivor.ngrok-free.dev"
     )
 ) else (
@@ -87,7 +87,7 @@ if "%USE_FIXED_NGROK%"=="1" (
     )
 
     if defined CLOUDFLARED_CMD (
-        start "Escape Room - Tunel para Celulares" cmd /k "title Tunel para Celulares && echo Conectando tunel publico Cloudflare... && "%CLOUDFLARED_CMD%" tunnel --url http://localhost:4200 --logfile "%BASE_DIR%tunnel.log""
+        start "Escape Room - Tunel para Celulares" cmd /k "cd /d "%BASE_DIR%" && title Tunel para Celulares && echo Conectando tunel publico Cloudflare... && cloudflared.exe tunnel --url http://localhost:4200 --logfile tunnel.log"
     ) else (
         start "Escape Room - Tunel para Celulares" cmd /k "title Tunel para Celulares && echo Conectando tunel via SSH... && ssh -p 443 -R0:localhost:4200 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 qr@a.pinggy.io"
     )
