@@ -55,6 +55,15 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "allowedHosts": [
+              "cyclic-consuming-survivor.ngrok-free.dev",
+              ".ngrok-free.dev",
+              ".ngrok-free.app",
+              ".trycloudflare.com",
+              "localhost"
+            ]
+          },
           "configurations": {
             "production": {
               "buildTarget": "frontend:build:production"
